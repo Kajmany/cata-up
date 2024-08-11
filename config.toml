@@ -1,0 +1,11 @@
+# Created by 'cata-up' - Cataclysm: Dark Days Ahead Updater
+# https://toml.io/en/v1.0.0
+
+# sources is a table (hashmap) array of possible sources for C:DDA versions. It currently only supports GitHub URIs.
+[[sources]]
+name = "Cataclysm: Dark Days Ahead"
+URI = "https://github.com/CleverRaven/Cataclysm-DDA/"
+
+[[sources]]
+name = "Cataclysm: Bright Nights"
+URI = "https://github.com/cataclysmbnteam/Cataclysm-BN"
