@@ -1,4 +1,4 @@
-package main
+package cfg
 
 import (
 	"fmt"
@@ -26,21 +26,35 @@ type Source struct {
 	URI  string `toml:"URI"` // TODO make sure this is decoded as a proper URI
 }
 
+// Satisfies 'Item' interface for bubbletea's List
+func (s Source) FilterValue() string {
+	return s.Name
+}
+
+// Satisfies 'DefaultItem'
+func (s Source) Title() string {
+	return s.Name
+}
+
+func (s Source) Description() string {
+	return s.URI
+}
+
 type Config struct {
 	Sources []Source `toml:"sources"`
 }
 
-func GetConfig() (*Config, error) {
+func GetConfig() (Config, error) {
 	cfgPath, err := getConfigPath()
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 
 	// No cfg where it should be? Write our embedded cfg file to the path!
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		err = writeDefaultConfig(cfgPath)
 		if err != nil {
-			return nil, fmt.Errorf("no config found, but unable to write the default configuration file: %w", err)
+			return Config{}, fmt.Errorf("no config found, but unable to write the default configuration file: %w", err)
 		}
 	}
 
@@ -48,9 +62,9 @@ func GetConfig() (*Config, error) {
 	var config Config
 	_, err = toml.DecodeFile(cfgPath, &config)
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
-	return &config, nil
+	return config, nil
 }
 
 func writeDefaultConfig(path string) error {
