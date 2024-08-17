@@ -1,10 +1,13 @@
 package cfg
 
 import (
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 
@@ -21,12 +24,39 @@ var baseConfig string
 // TODO this should be fetched from package somehow
 const appName = "cata-up"
 
-type Source struct {
-	Name string `toml:"name"`
-	URI  string `toml:"URI"` // TODO make sure this is decoded as a proper URI
+// URL's quickly validated to be plausible GitHub URL's
+// Must match host, have name/repo structure
+type repoURL struct {
+	*url.URL
 }
 
-// Satisfies 'Item' interface for bubbletea's List
+// TODO write tests for this
+func (u *repoURL) UnmarshalText(text []byte) error {
+	parsedURL, err := url.Parse(string(text))
+	if err != nil {
+		return fmt.Errorf("couldn't parse config source URL %v: %w", text, err)
+	}
+
+	if parsedURL.Hostname() != "github.com" {
+		return fmt.Errorf("only expecting github.com hostnames in sources, got %v", parsedURL.Hostname())
+	}
+
+	pathParts := strings.Split(parsedURL.Path, "/")
+	// Slash at the end will result in 4 pathparts. Otherwise, 3. Both should be OK.
+	if len(pathParts) < 3 || pathParts[0] != "" {
+		return errors.New("invalid path. expecting source path of format /name/repo")
+	}
+	// Could fail later, but my basic negligence test is done
+	*u = repoURL{parsedURL}
+	return nil
+}
+
+type Source struct {
+	Name string  `toml:"name"`
+	URI  repoURL `toml:"URI"`
+}
+
+// Satisfies 'Item' interface for Bubbletea's List
 func (s Source) FilterValue() string {
 	return s.Name
 }
@@ -37,8 +67,10 @@ func (s Source) Title() string {
 }
 
 func (s Source) Description() string {
-	return s.URI
+	return s.URI.String()
 }
+
+// End Bubbletea methods
 
 type Config struct {
 	Sources []Source `toml:"sources"`
