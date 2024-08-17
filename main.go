@@ -21,7 +21,7 @@ const (
 type model struct {
 	cfg         cfg.Config
 	sourceList  list.Model
-	releaseList list.Model
+	releaseList ui.ReleasePickerModel
 	mainPage    ui.FPageModel
 	curPage     curPage
 }
@@ -67,6 +67,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
+
+		case "g":
+			// Change to release picker from main
+			if m.curPage == Main {
+				m.curPage = ReleasePicker
+			}
+
+		case "esc", "backspace":
+			// Go back to main page from pickers screens
+			if m.curPage == ReleasePicker || m.curPage == SourcePicker {
+				m.curPage = Main
+			}
 		}
 
 		var cmd tea.Cmd
@@ -79,12 +91,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	switch m.curPage {
-	case SourcePicker:
-		return "\n" + m.sourceList.View()
-
 	case Main:
 		return m.mainPage.View()
+
+	case ReleasePicker:
+		return m.releaseList.View()
+
+	case SourcePicker:
+		return "\n" + m.sourceList.View()
 	}
+
 	return "\n FIXME"
 }
 
@@ -106,8 +122,11 @@ func main() {
 	// Create Main Page
 	fp := ui.NewFPModel(cfg.Sources[0])
 
+	// Create Release Picker Page
+	rl := ui.NewReleasePicker()
+
 	// Main Model w/ All Pages Attached
-	m := model{cfg, sl, list.Model{}, fp, Main}
+	m := model{cfg, sl, rl, fp, Main}
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Println("Error running program:", err)
