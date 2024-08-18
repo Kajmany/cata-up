@@ -29,7 +29,7 @@ func (m *ReleasePickerModel) initReleasePicker() {
 	m.list.Title = "Available Releases"
 }
 
-func (m ReleasePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 	var cmd tea.Cmd
 	return m, cmd
 }
