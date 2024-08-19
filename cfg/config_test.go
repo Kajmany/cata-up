@@ -87,3 +87,49 @@ func TestRepoURLUnmarshalText(t *testing.T) {
 		})
 	}
 }
+
+// Necessary? Probably not. Practice.
+func TestGetOwnerRepo(t *testing.T) {
+	tests := []struct {
+		name      string
+		URI       *url.URL
+		exp_owner string
+		exp_repo  string
+	}{
+		{
+			name: "C:DDA Leading Slash",
+			URI: &url.URL{
+				Scheme: "https",
+				Host:   "github.com",
+				Path:   "/CleverRaven/Cataclysm-DDA",
+			},
+			exp_owner: "CleverRaven",
+			exp_repo:  "Cataclysm-DDA",
+		},
+		{
+			name: "C:BN No Slash",
+			URI: &url.URL{
+				Scheme: "https",
+				Host:   "github.com",
+				Path:   "/cataclysmbnteam/Cataclysm-BN",
+			},
+			exp_owner: "cataclysmbnteam",
+			exp_repo:  "Cataclysm-BN",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				owner string
+				repo  string
+			)
+			source := Source{Name: tt.name, URI: repoURL{tt.URI}}
+			owner, repo = source.GetOwnerRepo()
+			if owner != tt.exp_owner || repo != tt.exp_repo {
+				t.Errorf("Source.GetOwnerRepo() = ['%v','%v'] [owner, repo], wanted ['%v,%v']", owner, repo, tt.exp_owner, tt.exp_repo)
+				return
+			}
+		})
+	}
+}

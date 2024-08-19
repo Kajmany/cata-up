@@ -30,7 +30,6 @@ type repoURL struct {
 	*url.URL
 }
 
-// TODO write tests for this
 func (u *repoURL) UnmarshalText(text []byte) error {
 	parsedURL, err := url.Parse(string(text))
 	if err != nil {
@@ -54,6 +53,11 @@ func (u *repoURL) UnmarshalText(text []byte) error {
 type Source struct {
 	Name string  `toml:"name"`
 	URI  repoURL `toml:"URI"`
+}
+
+func (s Source) GetOwnerRepo() (owner string, repo string) {
+	pathParts := strings.Split(s.URI.Path, "/")
+	return pathParts[1], pathParts[2]
 }
 
 // Satisfies 'Item' interface for Bubbletea's List
