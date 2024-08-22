@@ -3,6 +3,7 @@ package cfg
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -50,11 +51,6 @@ func (u *repoURL) UnmarshalText(text []byte) error {
 	return nil
 }
 
-type Source struct {
-	Name string  `toml:"name"`
-	URI  repoURL `toml:"URI"`
-}
-
 func (s Source) GetOwnerRepo() (owner string, repo string) {
 	pathParts := strings.Split(s.URI.Path, "/")
 	return pathParts[1], pathParts[2]
@@ -76,8 +72,63 @@ func (s Source) Description() string {
 
 // End Bubbletea methods
 
+// TODO: This seems redundant and ugly to wrap like this. Find alternatives?
+type LOutputMode struct{ LogOutPutMode }
+
+type LogOutPutMode int
+
+const (
+	LogOff LogOutPutMode = iota
+	Log2Path
+	Log2Stderr
+)
+
+func (lo *LOutputMode) UnmarshalText(text []byte) error {
+	str := string(text)
+	switch str {
+	case "off":
+		*lo = LOutputMode{LogOff}
+	case "path":
+		*lo = LOutputMode{Log2Path}
+	case "stderr":
+		*lo = LOutputMode{Log2Stderr}
+	default:
+		return fmt.Errorf(`unrecognized log export mode in config %v;
+expecting one of "off" "path" "stderr"`, str)
+	}
+	return nil
+}
+
+type LogLevel struct{ slog.Level }
+
+func (ll *LogLevel) UnmarshalText(text []byte) error {
+	str := string(text)
+	switch str {
+	case "debug":
+		*ll = LogLevel{slog.LevelDebug}
+	case "info":
+		*ll = LogLevel{slog.LevelInfo}
+	case "warn":
+		*ll = LogLevel{slog.LevelWarn}
+	case "error":
+		*ll = LogLevel{slog.LevelError}
+	default:
+		return fmt.Errorf(`unrecognized log level in config "%v";
+expecting one of "debug" "info" "warn" "error"`, str)
+	}
+	return nil
+}
+
+type Source struct {
+	Name string  `toml:"name"`
+	URI  repoURL `toml:"URI"`
+}
+
 type Config struct {
-	Sources []Source `toml:"sources"`
+	LogExport LOutputMode `toml:"log_export"`
+	LogLevel  LogLevel    `toml:"log_level"`
+	LogPath   string      `toml:"log_file_path"`
+	Sources   []Source    `toml:"sources"`
 }
 
 func GetConfig() (Config, error) {

@@ -1,7 +1,19 @@
 # Created by 'cata-up' - Cataclysm: Dark Days Ahead Updater
 # https://toml.io/en/v1.0.0
 
-# sources is a table (hashmap) array of possible sources for C:DDA versions. It currently only supports GitHub URIs.
+# The status bar and page show the most recent logs in-program.
+# This option allows all logs to also be output externally.
+# Options: "off" | "path" | "stderr"
+log_export = "off"
+# This option also controls what logs are shown in-program at the status bar.
+# Valid levels: "debug" | "info" | "warn" | "error"
+log_level = "info"
+# This is ignored unless log_output is "path".
+# Default outputs the log file where the binary is located.
+log_file_path = "./log.txt"
+
+# sources is a table (hashmap) array of possible sources for C:DDA versions. 
+# It currently only supports GitHub URIs.
 [[sources]]
 name = "Cataclysm: Dark Days Ahead"
 URI = "https://github.com/CleverRaven/Cataclysm-DDA/"

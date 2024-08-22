@@ -15,8 +15,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 	}
 
+	logger, err := NewBufferedLogger(&cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+
 	// Main Model w/ All Pages Attached
-	m := ui.NewUI(cfg)
+	m := ui.NewUI(cfg, logger)
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Println("Error running program:", err)

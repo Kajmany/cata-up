@@ -2,6 +2,8 @@ package ui
 
 // TODO this file is mostly junk ripped out of Main
 import (
+	"log/slog"
+
 	"github.com/Kajmany/cata-up/cfg"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,6 +22,7 @@ type Common struct {
 	// Main page displays/changes. Picker page acts on it
 	CurrentSource cfg.Source
 	// TODO width needs to go here and be used by all pages
+	logger *slog.Logger
 }
 
 type Model struct {
@@ -69,9 +72,9 @@ func (m Model) View() string {
 }
 
 // TODO this sounds like a dumb name and I need to handle errors here and/or main
-func NewUI(cfg cfg.Config) Model {
+func NewUI(cfg cfg.Config, logger *slog.Logger) Model {
 	// shared state for all pages
-	common := Common{Main, cfg.Sources[0]}
+	common := Common{Main, cfg.Sources[0], logger}
 
 	// Create Source Picker Page (mostly wraps list Bubble)
 	// Must copy to satisfy interface input(?)
@@ -86,5 +89,6 @@ func NewUI(cfg cfg.Config) Model {
 
 	// Create Release Picker Page
 	rl := NewReleasePicker(&common)
+	common.logger.Info("Welcome to cata-up!")
 	return Model{&common, cfg, sl, rl, fp}
 }
