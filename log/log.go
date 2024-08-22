@@ -1,4 +1,4 @@
-package main
+package log
 
 import (
 	"io"
@@ -47,7 +47,12 @@ func (sb *stringBuffer) GetBuffer() []string {
 	return append([]string(nil), sb.buffer...)
 }
 
-func NewBufferedLogger(config *cfg.Config) (*slog.Logger, error) {
+type BufferedLogger struct {
+	L *slog.Logger
+	B *stringBuffer
+}
+
+func NewBufferedLogger(config *cfg.Config) (BufferedLogger, error) {
 	var out io.Writer
 	buffer := newStringBuffer(maxSize)
 	// TODO: I hate the way this struct is addressed
@@ -56,7 +61,7 @@ func NewBufferedLogger(config *cfg.Config) (*slog.Logger, error) {
 	case cfg.Log2Path:
 		file, err := os.OpenFile(config.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			return nil, err
+			return BufferedLogger{}, err
 		}
 		out = io.MultiWriter(file, buffer)
 	case cfg.Log2Stderr:
@@ -67,5 +72,6 @@ func NewBufferedLogger(config *cfg.Config) (*slog.Logger, error) {
 
 	opts := slog.HandlerOptions{Level: config.LogLevel.Level}
 	handler := slog.NewTextHandler(out, &opts)
-	return slog.New(handler), nil
+	logger := slog.New(handler)
+	return BufferedLogger{logger, buffer}, nil
 }

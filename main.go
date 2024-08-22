@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Kajmany/cata-up/cfg"
+	"github.com/Kajmany/cata-up/log"
 	"github.com/Kajmany/cata-up/ui"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -15,7 +16,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 	}
 
-	logger, err := NewBufferedLogger(&cfg)
+	logger, err := log.NewBufferedLogger(&cfg)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
