@@ -33,7 +33,20 @@ type Model struct {
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	var (
+		cmds []tea.Cmd
+		cmd  tea.Cmd
+	)
+	// Need to remember to add init for all new pages
+	cmd = m.mainPage.Init()
+	cmds = append(cmds, cmd)
+	cmd = m.sourceList.Init()
+	cmds = append(cmds, cmd)
+	m.Common.logger.L.Debug("Preparing to call RL init")
+	cmd = m.releaseList.Init()
+	cmds = append(cmds, cmd)
+	m.Common.logger.L.Debug("Returning a batch of commands", "number", len(cmds))
+	return tea.Batch(cmds...)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -49,6 +62,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sourceList, cmd = m.sourceList.Update(msg)
 		cmds = append(cmds, cmd)
 	case ReleasePicker:
+		m.releaseList, cmd = m.releaseList.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+	// Some async messages may need to go to pages that aren't active
+	// TODO: can this be done better?
+	if msg, ok := msg.(NewReleasesMsg); ok {
 		m.releaseList, cmd = m.releaseList.Update(msg)
 		cmds = append(cmds, cmd)
 	}

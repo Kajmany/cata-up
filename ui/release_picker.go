@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"fmt"
-
 	"github.com/Kajmany/cata-up/picker"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -20,7 +18,7 @@ type ReleasePickerModel struct {
 }
 
 func (m ReleasePickerModel) Init() tea.Cmd {
-	return m.cmdGetReleases
+	return m.cmdGetReleases()
 }
 
 func NewReleasePicker(common *Common) ReleasePickerModel {
@@ -36,13 +34,13 @@ func NewReleasePicker(common *Common) ReleasePickerModel {
 func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
-	case newReleasesMsg:
-		// FIXME: This doesn't work.
+	case NewReleasesMsg:
+		m.common.logger.L.Info("recieved releases", "number", len(msg.releases))
 		m.ExperimentalReleases = append(m.ExperimentalReleases, msg.releases...)
 		cmd = m.list.SetItems(m.ExperimentalReleases)
 
-	case errMsg:
-		fmt.Println("RELPICKERERR: ", msg) // TODO IMPROPER
+	case ErrMsg:
+		m.common.logger.L.Error("update got error", "err", msg)
 		return m, tea.Quit
 
 	case tea.KeyMsg:
@@ -54,6 +52,7 @@ func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 			m.common.Page = Main
 
 		default:
+			// FIXME: This doesn't work.
 			m.list.Update(msg) // Pass to list underlying
 		}
 	}
@@ -65,8 +64,8 @@ func (m ReleasePickerModel) View() string {
 }
 
 type (
-	errMsg         struct{ error }
-	newReleasesMsg struct {
+	ErrMsg         struct{ error }
+	NewReleasesMsg struct {
 		releases []list.Item
 	}
 )
@@ -88,19 +87,21 @@ func (r Release) Description() string {
 
 // End Bubbletea methods
 
-func (m ReleasePickerModel) cmdGetReleases() tea.Msg {
-	// TODO needs to be capable of getting more than 1st load
-	rels, err := picker.GetRecentReleases(m.client, m.common.CurrentSource, 0, 10)
-	if err != nil {
-		// TODO make this error more useful for program
-		return errMsg{err}
+func (m ReleasePickerModel) cmdGetReleases() tea.Cmd {
+	return func() tea.Msg {
+		// TODO needs to be capable of getting more than 1st load
+		rels, err := picker.GetRecentReleases(m.client, m.common.CurrentSource, 0, 10)
+		if err != nil {
+			// TODO make this error more useful for program
+			return ErrMsg{err}
+		}
+		// FIXME is this dance of wrapping and then converting necessary? feels dumb
+		relItems := make([]list.Item, len(rels))
+		for i := range rels {
+			relItems[i] = Release{rels[i]}
+		}
+		return NewReleasesMsg{relItems}
 	}
-	// FIXME is this dance of wrapping and then converting necessary? feels dumb
-	relItems := make([]list.Item, len(rels))
-	for i := range rels {
-		relItems[i] = Release{rels[i]}
-	}
-	return newReleasesMsg{relItems}
 }
 
 /* Using common until page-specific bindings required
