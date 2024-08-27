@@ -20,8 +20,7 @@ type Common struct {
 	Page CurPage
 	// Main page displays/changes. Picker page acts on it
 	CurrentSource cfg.Source
-	// TODO width needs to go here and be used by all pages
-	logger log.BufferedLogger
+	logger        log.BufferedLogger
 }
 
 type Model struct {
@@ -53,7 +52,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
-	// TODO: Proper resizing for all pages
+	if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
+		m.Common.logger.L.Debug(
+			"got window resize message", "width", sizeMsg.Width, "height", sizeMsg.Height,
+		)
+		// Since we get a startup cmd, we should be able to set arbitrary init values
+		// and then just pass every update to each page
+		m.mainPage, cmd = m.mainPage.Update(msg)
+		cmds = append(cmds, cmd)
+		m.sourceList, cmd = m.sourceList.Update(msg)
+		cmds = append(cmds, cmd)
+		m.releaseList, cmd = m.releaseList.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
 	switch m.Common.Page {
 	case Main:
 		m.mainPage, cmd = m.mainPage.Update(msg)

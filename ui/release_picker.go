@@ -22,14 +22,23 @@ const (
 	showChangelog
 )
 
+// Couldn't just make it a *tea.Model because they actually aren't.. UGH
+type inFocus int
+
+const (
+	listFocus inFocus = iota
+	portFocus
+)
+
 type ReleasePickerModel struct {
 	common *Common
 	// Will need to swap between fetched release types on request
 	ExperimentalReleases []*github.RepositoryRelease
-	StableReleases       []list.Item // TODO not handled
+	StableReleases       []list.Item // TODO: not handled
 	client               *github.Client
 	list                 list.Model
 	port                 viewport.Model
+	curFocus             inFocus
 	examiner             examineMode
 	changelog            string
 }
@@ -44,7 +53,7 @@ func NewReleasePicker(common *Common) ReleasePickerModel {
 
 	m.common = common
 	// TODO: Handle width & height
-	m.list = list.New([]list.Item{}, list.NewDefaultDelegate(), 40, 20)
+	m.list = list.New([]list.Item{}, list.NewDefaultDelegate(), 20, 40)
 	m.list.Title = "Available Releases"
 	m.port = viewport.New(40, 20)
 	m.port.SetContent(fillerString)
@@ -58,6 +67,12 @@ func NewReleasePicker(common *Common) ReleasePickerModel {
 func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.port.Height = msg.Height
+		m.port.Width = msg.Width
+		m.list.SetHeight(msg.Height)
+		m.list.SetWidth(msg.Width)
+
 	case NewReleasesMsg:
 		// TODO: this logic will need to be reworked if we ever want more releases after init
 		m.common.logger.L.Info("recieved releases", "number", len(msg.releases))
@@ -99,16 +114,24 @@ func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 
 		case key.Matches(msg, rKeyMap.toggleExaminer):
 			m.examiner = 1 - m.examiner
+
+		case key.Matches(msg, rKeyMap.toggleFocus):
+			m.curFocus = 1 - m.curFocus
 		}
 
-		// Some updates needed regardless of key pressed
-		m.list, cmd = m.list.Update(msg) // Always also pass to list
-		// Needs to be updated in case the list moved items
-		if m.examiner == showRelease {
-			curItem := m.list.SelectedItem().(Release)
-			m.port.SetContent(releaseView(curItem.RepositoryRelease))
-		} else if m.examiner == showChangelog {
-			m.port.SetContent(m.changelog)
+		// Regardless of key pressed, curently focused widget also needs it
+		if m.curFocus == listFocus {
+			m.list, cmd = m.list.Update(msg)
+			// Needs to be updated in case the list moved items
+			if m.examiner == showRelease {
+				curItem := m.list.SelectedItem().(Release)
+				m.port.SetContent(releaseView(curItem.RepositoryRelease))
+			} else if m.examiner == showChangelog {
+				m.port.SetContent(m.changelog)
+			}
+		} else {
+			// TODO: erratic scroll for changelog
+			m.port, cmd = m.port.Update(msg)
 		}
 	}
 	return m, cmd
@@ -163,8 +186,9 @@ func releaseView(r *github.RepositoryRelease) string {
 	return fmt.Sprintf("Name: %v\nTag: %v\nBody: %v\n", name, tagName, body)
 }
 
+// The special changelog algorithm sauce? Check every line. Both C:DDA and C:BN
+// put git commit links on each change item line. Definitely won't work everywhere.
 func changelogView(rels []*github.RepositoryRelease) (string, error) {
-	// This will break if the body format changes at all, so it must error gracefully
 	// TODO: ditto
 	var cl strings.Builder
 	if rels[len(rels)-1].Name != nil && rels[0].Name != nil {
@@ -195,9 +219,11 @@ func changelogView(rels []*github.RepositoryRelease) (string, error) {
 type releaseKeyMap struct {
 	c              commonKeys
 	toggleExaminer key.Binding
+	toggleFocus    key.Binding
 }
 
 var rKeyMap = releaseKeyMap{
 	c:              comKeys,
 	toggleExaminer: key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "toggle examine release/changelog")),
+	toggleFocus:    key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "toggle list/pager focus")),
 }

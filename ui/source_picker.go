@@ -18,7 +18,7 @@ type SourcePickerModel struct {
 func NewSourcePicker(common *Common, items []list.Item) SourcePickerModel {
 	var m SourcePickerModel
 	m.common = common
-	m.list = list.New(items, list.NewDefaultDelegate(), 40, 20)
+	m.list = list.New(items, list.NewDefaultDelegate(), m.common.width, m.common.height)
 	m.list.Title = "Sources"
 	return m
 }
@@ -29,23 +29,30 @@ func (m SourcePickerModel) Init() tea.Cmd {
 
 func (m SourcePickerModel) Update(msg tea.Msg) (SourcePickerModel, tea.Cmd) {
 	var cmd tea.Cmd
-	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.list.SetHeight(msg.Height)
+		m.list.SetWidth(msg.Width)
+
+	case tea.KeyMsg:
 		switch {
-		case key.Matches(keyMsg, comKeys.Back):
+		case key.Matches(msg, comKeys.Back):
 			if !m.list.SettingFilter() {
 				m.common.Page = Main
 				return m, nil
 			}
-		case key.Matches(keyMsg, comKeys.Select):
+		case key.Matches(msg, comKeys.Select):
 			i := m.list.SelectedItem()
 			m.common.CurrentSource = i.(cfg.Source) // TODO: dangerous mutation?
 			m.common.Page = Main
 			return m, nil
 		}
-	}
 
-	// And pass everything to the list, too.
-	m.list, cmd = m.list.Update(msg)
+		// And pass everything to the list, too.
+		m.list, cmd = m.list.Update(msg)
+		return m, cmd
+	}
+	// What type of message could this be? Doesn't matter.
 	return m, cmd
 }
 
