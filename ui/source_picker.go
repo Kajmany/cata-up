@@ -32,8 +32,10 @@ func (m SourcePickerModel) Update(msg tea.Msg) (SourcePickerModel, tea.Cmd) {
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch {
 		case key.Matches(keyMsg, comKeys.Back):
-			m.common.Page = Main
-			return m, nil
+			if !m.list.SettingFilter() {
+				m.common.Page = Main
+				return m, nil
+			}
 		case key.Matches(keyMsg, comKeys.Select):
 			i := m.list.SelectedItem()
 			m.common.CurrentSource = i.(cfg.Source) // TODO: dangerous mutation?
@@ -42,7 +44,7 @@ func (m SourcePickerModel) Update(msg tea.Msg) (SourcePickerModel, tea.Cmd) {
 		}
 	}
 
-	// Anything besides those keys, pass to list
+	// And pass everything to the list, too.
 	m.list, cmd = m.list.Update(msg)
 	return m, cmd
 }
