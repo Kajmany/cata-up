@@ -52,7 +52,6 @@ func NewReleasePicker(common *Common) ReleasePickerModel {
 	fillerString := "No Releases Yet..."
 
 	m.common = common
-	// TODO: Handle width & height
 	m.list = list.New([]list.Item{}, list.NewDefaultDelegate(), 20, 40)
 	m.list.Title = "Available Releases"
 	m.port = viewport.New(40, 20)
@@ -86,15 +85,19 @@ func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 		cmd = m.list.SetItems(relItems)
 
 		// Examiner views
-		if m.examiner == showRelease {
-			firstItem := m.ExperimentalReleases[0]
-			m.port.SetContent(releaseView(firstItem))
-		}
+		// Generate changelog regardless
 		var err error
 		m.changelog, err = changelogView(msg.releases)
 		if err != nil {
 			m.common.logger.L.Warn("problem generating changelog", "err", err)
 			m.changelog = "Unable to concatenate changelog.\nSee log for details."
+		}
+		// Then pick which to show
+		if m.examiner == showRelease {
+			firstItem := m.ExperimentalReleases[0]
+			m.port.SetContent(releaseView(firstItem))
+		} else {
+			m.port.SetContent(m.changelog)
 		}
 
 	case ErrMsg:
@@ -130,7 +133,6 @@ func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 				m.port.SetContent(m.changelog)
 			}
 		} else {
-			// TODO: erratic scroll for changelog
 			m.port, cmd = m.port.Update(msg)
 		}
 	}
@@ -138,6 +140,7 @@ func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 }
 
 func (m ReleasePickerModel) View() string {
+	// TODO: visually distinguish which widget is in focus
 	return lipgloss.JoinHorizontal(lipgloss.Center, m.list.View(), m.port.View())
 }
 
@@ -187,7 +190,7 @@ func releaseView(r *github.RepositoryRelease) string {
 }
 
 // The special changelog algorithm sauce? Check every line. Both C:DDA and C:BN
-// put git commit links on each change item line. Definitely won't work everywhere.
+// put github PR links on each change item line. Definitely won't work everywhere.
 func changelogView(rels []*github.RepositoryRelease) (string, error) {
 	// TODO: ditto
 	var cl strings.Builder
@@ -198,19 +201,25 @@ func changelogView(rels []*github.RepositoryRelease) (string, error) {
 	}
 
 	for i := range len(rels) {
-		if rels[i].Body != nil {
-			name := common.ValueOrDefault(rels[i].Name, "Nameless Release")
-			cl.WriteString(name)
-			cl.WriteString("\n")
+		// Did we have a line-item written (or is filler-text needed?)
+		wrote := false
 
+		name := common.ValueOrDefault(rels[i].Name, "Nameless Release")
+		cl.WriteString(name)
+		cl.WriteString("\n")
+		if rels[i].Body != nil {
 			scanner := bufio.NewScanner(strings.NewReader(*rels[i].Body))
 			for scanner.Scan() {
 				line := scanner.Text()
 				if strings.Contains(line, "/pull/") {
 					cl.WriteString(line)
+					wrote = true
 				}
 			}
 			cl.WriteString("\n")
+		}
+		if !wrote {
+			cl.WriteString("**no line-item changes extracted**\n")
 		}
 	}
 	return cl.String(), nil

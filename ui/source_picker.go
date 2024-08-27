@@ -18,7 +18,7 @@ type SourcePickerModel struct {
 func NewSourcePicker(common *Common, items []list.Item) SourcePickerModel {
 	var m SourcePickerModel
 	m.common = common
-	m.list = list.New(items, list.NewDefaultDelegate(), m.common.width, m.common.height)
+	m.list = list.New(items, list.NewDefaultDelegate(), 20, 40)
 	m.list.Title = "Sources"
 	return m
 }
