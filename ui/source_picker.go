@@ -59,9 +59,3 @@ func (m SourcePickerModel) Update(msg tea.Msg) (SourcePickerModel, tea.Cmd) {
 func (m SourcePickerModel) View() string {
 	return m.list.View()
 }
-
-/* Using common until page-specific bindings required
-* type sourceKeyMap struct {
-*   c commonKeys
-*   }
-*   */

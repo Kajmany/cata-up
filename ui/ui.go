@@ -4,6 +4,8 @@ package ui
 import (
 	"github.com/Kajmany/cata-up/cfg"
 	"github.com/Kajmany/cata-up/log"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -29,6 +31,7 @@ type Model struct {
 	sourceList  SourcePickerModel
 	releaseList ReleasePickerModel
 	mainPage    FPageModel
+	help        help.Model
 }
 
 func (m Model) Init() tea.Cmd {
@@ -51,6 +54,23 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	// Only global keys are processed here. 'Page' models handle their own keys.
+	// This includes 'back' presses, which need current active page
+	case tea.KeyMsg:
+		// Free text input? Disregard until they exit it locally.
+		if m.Common.Page == SourcePicker && m.sourceList.list.SettingFilter() ||
+			m.Common.Page == ReleasePicker && m.releaseList.list.SettingFilter() {
+			break
+		}
+		switch {
+		case key.Matches(msg, comKeys.Quit):
+			return m, tea.Quit
+		case key.Matches(msg, comKeys.Help):
+			m.help.ShowAll = !m.help.ShowAll
+		}
+	}
 
 	if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
 		m.Common.logger.L.Debug(
@@ -87,18 +107,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
+	var (
+		content string
+		help    string
+	)
 	switch m.Common.Page {
 	case Main:
-		return m.mainPage.View()
-
+		content = m.mainPage.View()
+		help = m.help.View(fKeyMap)
 	case ReleasePicker:
-		return m.releaseList.View()
-
+		// FIXME: Deal with the help menu in the list in the page
+		content = m.releaseList.View()
+		help = m.help.View(rKeyMap)
 	case SourcePicker:
-		return m.sourceList.View()
+		// FIXME: Deal with the help menu in the list in the page
+		content = m.sourceList.View()
+		help = "MacGuffin" // TODO: Get source key map
 	}
 
-	return "\n FIXME"
+	return content + help
 }
 
 // TODO this sounds like a dumb name and I need to handle errors here and/or main
@@ -120,5 +147,5 @@ func NewUI(cfg cfg.Config, logger log.BufferedLogger) Model {
 	// Create Release Picker Page
 	rl := NewReleasePicker(&common)
 	common.logger.L.Info("Welcome to cata-up!")
-	return Model{&common, cfg, sl, rl, fp}
+	return Model{&common, cfg, sl, rl, fp, help.New()}
 }

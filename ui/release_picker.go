@@ -77,7 +77,7 @@ func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 		m.common.logger.L.Info("recieved releases", "number", len(msg.releases))
 		m.ExperimentalReleases = append(m.ExperimentalReleases, msg.releases...)
 
-		// FIXME: is this dance of wrapping and then converting necessary? feels dumb
+		// TODO: is this dance of wrapping and then converting necessary? feels dumb
 		relItems := make([]list.Item, len(msg.releases))
 		for i := range msg.releases {
 			relItems[i] = Release{msg.releases[i]}
@@ -106,9 +106,6 @@ func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, comKeys.Quit):
-			return m, tea.Quit
-
 		case key.Matches(msg, comKeys.Back):
 			if !m.list.SettingFilter() {
 				// So we don't interfere with list text input
@@ -120,6 +117,9 @@ func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 
 		case key.Matches(msg, rKeyMap.toggleFocus):
 			m.curFocus = 1 - m.curFocus
+
+		case key.Matches(msg, comKeys.Select):
+			// TODO: AHHH!!
 		}
 
 		// Regardless of key pressed, curently focused widget also needs it
@@ -142,43 +142,6 @@ func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 func (m ReleasePickerModel) View() string {
 	// TODO: visually distinguish which widget is in focus
 	return lipgloss.JoinHorizontal(lipgloss.Center, m.list.View(), m.port.View())
-}
-
-type (
-	ErrMsg         struct{ error }
-	NewReleasesMsg struct {
-		releases []*github.RepositoryRelease
-	}
-)
-
-type Release struct{ *github.RepositoryRelease }
-
-// Bubbletea list.Item methods
-func (r Release) FilterValue() string {
-	return *r.TagName
-}
-
-func (r Release) Title() string {
-	return *r.TagName
-}
-
-func (r Release) Description() string {
-	return r.CreatedAt.String()
-}
-
-// End Bubbletea methods
-
-func (m ReleasePickerModel) cmdGetReleases() tea.Cmd {
-	return func() tea.Msg {
-		// TODO needs to be capable of getting more than 1st load
-		rels, err := picker.GetRecentReleases(m.client, m.common.CurrentSource, 0, 10)
-		if err != nil {
-			// TODO make this error more useful for program
-			return ErrMsg{err}
-		}
-
-		return NewReleasesMsg{rels}
-	}
 }
 
 func releaseView(r *github.RepositoryRelease) string {
@@ -223,16 +186,4 @@ func changelogView(rels []*github.RepositoryRelease) (string, error) {
 		}
 	}
 	return cl.String(), nil
-}
-
-type releaseKeyMap struct {
-	c              commonKeys
-	toggleExaminer key.Binding
-	toggleFocus    key.Binding
-}
-
-var rKeyMap = releaseKeyMap{
-	c:              comKeys,
-	toggleExaminer: key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "toggle examine release/changelog")),
-	toggleFocus:    key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "toggle list/pager focus")),
 }
