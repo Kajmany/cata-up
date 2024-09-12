@@ -41,6 +41,8 @@ type ReleasePickerModel struct {
 	curFocus             inFocus
 	examiner             examineMode
 	changelog            string
+
+	KeyMap releaseKeyMap
 }
 
 func (m ReleasePickerModel) Init() tea.Cmd {
@@ -54,6 +56,7 @@ func NewReleasePicker(common *Common) ReleasePickerModel {
 	m.common = common
 	m.list = list.New([]list.Item{}, list.NewDefaultDelegate(), 20, 40)
 	m.list.Title = "Available Releases"
+	m.list.SetShowHelp(false)
 	m.port = viewport.New(40, 20)
 	m.port.SetContent(fillerString)
 	m.client = picker.GetClient()
@@ -141,7 +144,41 @@ func (m ReleasePickerModel) Update(msg tea.Msg) (ReleasePickerModel, tea.Cmd) {
 
 func (m ReleasePickerModel) View() string {
 	// TODO: visually distinguish which widget is in focus
-	return lipgloss.JoinHorizontal(lipgloss.Center, m.list.View(), m.port.View())
+	heightBudget := m.common.height
+	helpText := m.common.help.View(m)
+	heightBudget -= lipgloss.Height(helpText)
+	if heightBudget < 10 {
+		// Totally arbitrary set point. Mostly concerned about negative.
+		m.common.logger.L.Warn("Height available after help text < 10! Expect malformed window.",
+			"budget", heightBudget)
+	}
+
+	// Help widget width is set in ui, so we need to just worry about content panes here
+	widthBudget := (m.common.width / 2)
+	// TODO: Do we need a warning about window not wide enough?
+	m.list.SetWidth(widthBudget)
+	m.port.Width = widthBudget
+
+	// These might be costly calls, but I don't see an alternative
+	m.list.SetHeight(heightBudget)
+	m.port.Height = heightBudget
+	content := lipgloss.JoinHorizontal(lipgloss.Center, m.list.View(), m.port.View())
+	return lipgloss.JoinVertical(lipgloss.Center, content, helpText)
+}
+
+func (m ReleasePickerModel) ShortHelp() []key.Binding {
+	kb := []key.Binding{m.KeyMap.c.Help, m.KeyMap.c.Quit, m.KeyMap.toggleExaminer, m.KeyMap.toggleFocus}
+	kb = append(m.list.ShortHelp(), kb...)
+	return kb
+}
+
+func (m ReleasePickerModel) FullHelp() [][]key.Binding {
+	kbs := [][]key.Binding{
+		{m.KeyMap.toggleExaminer, m.KeyMap.toggleFocus}, // first column
+		{m.KeyMap.c.Help, m.KeyMap.c.Quit},              // second column
+	}
+	kbs = append(m.list.FullHelp(), kbs...)
+	return kbs
 }
 
 func releaseView(r *github.RepositoryRelease) string {

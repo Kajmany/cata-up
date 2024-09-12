@@ -16,12 +16,14 @@ const (
 )
 
 type FPageModel struct {
-	Common         *Common
+	c              *Common
 	ReleaseChannel ReleaseType
+
+	KeyMap frontKeyMap
 }
 
 func NewFPModel(commonState *Common) FPageModel {
-	return FPageModel{commonState, Experimental}
+	return FPageModel{commonState, Experimental, fKeyMap}
 }
 
 func (m FPageModel) Init() tea.Cmd {
@@ -35,9 +37,9 @@ func (m FPageModel) Update(msg tea.Msg) (FPageModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, fKeyMap.Sources):
-			m.Common.Page = SourcePicker
+			m.c.Page = SourcePicker
 		case key.Matches(msg, fKeyMap.GetReleases):
-			m.Common.Page = ReleasePicker
+			m.c.Page = ReleasePicker
 		case key.Matches(msg, fKeyMap.Channel):
 			// I must be dumb because this toggle logic feels like magic
 			m.ReleaseChannel = 1 - m.ReleaseChannel
@@ -48,7 +50,7 @@ func (m FPageModel) Update(msg tea.Msg) (FPageModel, tea.Cmd) {
 }
 
 func (m FPageModel) View() string {
-	srcLabel := lipgloss.JoinHorizontal(lipgloss.Center, underLineStyle.Render("Source:"), labelStyle.Render(m.Common.CurrentSource.Name))
+	srcLabel := lipgloss.JoinHorizontal(lipgloss.Center, underLineStyle.Render("Source:"), labelStyle.Render(m.c.CurrentSource.Name))
 
 	var (
 		expStatus  string
@@ -63,7 +65,8 @@ func (m FPageModel) View() string {
 		stabStatus = "[X]"
 	}
 	channelRadio := underLineStyle.Render("Channel") + "\n" + labelStyle.Render("Experimental: "+expStatus+"\nStable: "+stabStatus)
-	return lipgloss.JoinVertical(lipgloss.Center, title, srcLabel, channelRadio)
+	content := lipgloss.JoinVertical(lipgloss.Center, title, srcLabel, channelRadio)
+	return lipgloss.JoinVertical(lipgloss.Center, content, m.c.help.View(m))
 }
 
 var labelStyle = lipgloss.NewStyle().
@@ -86,3 +89,14 @@ var underLineStyle = lipgloss.NewStyle().
 //
 //go:embed title.txt
 var title string
+
+func (k FPageModel) ShortHelp() []key.Binding {
+	return []key.Binding{k.KeyMap.c.Help, k.KeyMap.c.Quit}
+}
+
+func (k FPageModel) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.KeyMap.Sources, k.KeyMap.GetReleases, k.KeyMap.Channel}, // first column
+		{k.KeyMap.c.Help, k.KeyMap.c.Quit},                         // second column
+	}
+}

@@ -1,10 +1,8 @@
 package ui
 
-import "github.com/charmbracelet/bubbles/key"
-
-// 'Common' Keys not specific to a single page
-// Display methods and full keymap is a per-page struct
-// TODO rethink this?
+import (
+	"github.com/charmbracelet/bubbles/key"
+)
 
 type commonKeys struct {
 	Back   key.Binding
@@ -44,27 +42,16 @@ var fKeyMap = frontKeyMap{
 	c: comKeys,
 	Sources: key.NewBinding(
 		key.WithKeys("s"),
-		key.WithHelp("s", "source Selection"),
+		key.WithHelp("s", "source selection"),
 	),
 	GetReleases: key.NewBinding(
 		key.WithKeys("g"),
-		key.WithHelp("g", "get Releases"),
+		key.WithHelp("g", "get releases"),
 	),
 	Channel: key.NewBinding(
 		key.WithKeys("c"),
-		key.WithHelp("c", "change Release Channel"),
+		key.WithHelp("c", "change release channel"),
 	),
-}
-
-func (k frontKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.c.Help, k.c.Quit}
-}
-
-func (k frontKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{k.Sources, k.GetReleases, k.Channel}, // first column
-		{k.c.Help, k.c.Quit},                  // second column
-	}
 }
 
 // Release Picker Page
@@ -74,26 +61,16 @@ type releaseKeyMap struct {
 	toggleFocus    key.Binding
 }
 
+// TODO: It's not shown here that this is changed in-flight to include list keymaps on display
 var rKeyMap = releaseKeyMap{
 	c:              comKeys,
 	toggleExaminer: key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "toggle examine release/changelog")),
 	toggleFocus:    key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "toggle list/pager focus")),
 }
 
-func (k releaseKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.c.Help, k.c.Quit, k.toggleExaminer, k.toggleFocus}
-}
+// TODO: Finish moving help funcs/ INITs to respective pages (more dynamic logic needs the parent model!!)
 
-func (k releaseKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{k.toggleExaminer, k.toggleFocus}, // first column
-		{k.c.Help, k.c.Quit},              // second column
-	}
+// Source Picker Page
+type sourceKeyMap struct {
+	c commonKeys
 }
-
-// Source Picker Page (maybe)
-/* Using common until page-specific bindings required
-* type sourceKeyMap struct {
-*   c commonKeys
-*   }
-*   */

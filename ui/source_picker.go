@@ -5,6 +5,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Very little to add to built-in list class. Just need a way to go back
@@ -19,6 +20,7 @@ func NewSourcePicker(common *Common, items []list.Item) SourcePickerModel {
 	var m SourcePickerModel
 	m.common = common
 	m.list = list.New(items, list.NewDefaultDelegate(), 20, 40)
+	m.list.SetShowHelp(false)
 	m.list.Title = "Sources"
 	return m
 }
@@ -57,5 +59,17 @@ func (m SourcePickerModel) Update(msg tea.Msg) (SourcePickerModel, tea.Cmd) {
 }
 
 func (m SourcePickerModel) View() string {
-	return m.list.View()
+	heightBudget := m.common.height
+	helpText := m.common.help.View(m)
+	heightBudget -= lipgloss.Height(helpText)
+	if heightBudget < 10 {
+		// Totally arbitrary set point. Mostly concerned about negative.
+		m.common.logger.L.Warn("Height available after help text < 10! Expect malformed window.",
+			"budget", heightBudget)
+	}
+
+	// Width doesn't need to be calculated each view. It's set on update
+	m.list.SetHeight(heightBudget)
+
+	return lipgloss.JoinVertical(lipgloss.Center, m.list.View(), helpText)
 }

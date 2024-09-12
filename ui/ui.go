@@ -23,6 +23,10 @@ type Common struct {
 	// Main page displays/changes. Picker page acts on it
 	CurrentSource cfg.Source
 	logger        log.BufferedLogger
+	// TODO: see if this leads to race conditions, which probably won't cause much harm for long anyway
+	width  int // Currently unused
+	height int // Consumed by some views (rel picker)
+	help   help.Model
 }
 
 type Model struct {
@@ -31,7 +35,6 @@ type Model struct {
 	sourceList  SourcePickerModel
 	releaseList ReleasePickerModel
 	mainPage    FPageModel
-	help        help.Model
 }
 
 func (m Model) Init() tea.Cmd {
@@ -68,16 +71,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, comKeys.Quit):
 			return m, tea.Quit
 		case key.Matches(msg, comKeys.Help):
-			m.help.ShowAll = !m.help.ShowAll
+			m.Common.help.ShowAll = !m.Common.help.ShowAll
 		}
-	}
 
-	if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
+	case tea.WindowSizeMsg:
 		m.Common.logger.L.Debug(
-			"got window resize message", "width", sizeMsg.Width, "height", sizeMsg.Height,
+			"got window resize message", "width", msg.Width, "height", msg.Height,
 		)
 		// Since we get a startup cmd, we should be able to set arbitrary init values
 		// and then just pass every update to each page
+		m.Common.width = msg.Width
+		m.Common.height = msg.Height
+
+		m.Common.help.Width = msg.Width
 		m.mainPage, cmd = m.mainPage.Update(msg)
 		cmds = append(cmds, cmd)
 		m.sourceList, cmd = m.sourceList.Update(msg)
@@ -113,12 +119,9 @@ func (m Model) View() string {
 	)
 	switch m.Common.Page {
 	case Main:
-		content = m.mainPage.View()
-		help = m.help.View(fKeyMap)
+		return m.mainPage.View()
 	case ReleasePicker:
-		// FIXME: Deal with the help menu in the list in the page
-		content = m.releaseList.View()
-		help = m.help.View(rKeyMap)
+		return m.releaseList.View()
 	case SourcePicker:
 		// FIXME: Deal with the help menu in the list in the page
 		content = m.sourceList.View()
@@ -131,7 +134,7 @@ func (m Model) View() string {
 // TODO this sounds like a dumb name and I need to handle errors here and/or main
 func NewUI(cfg cfg.Config, logger log.BufferedLogger) Model {
 	// shared state for all pages
-	common := Common{Main, cfg.Sources[0], logger}
+	common := Common{Main, cfg.Sources[0], logger, 40, 80, help.New()}
 
 	// Create Source Picker Page (mostly wraps list Bubble)
 	// Must copy to satisfy interface input(?)
@@ -147,5 +150,5 @@ func NewUI(cfg cfg.Config, logger log.BufferedLogger) Model {
 	// Create Release Picker Page
 	rl := NewReleasePicker(&common)
 	common.logger.L.Info("Welcome to cata-up!")
-	return Model{&common, cfg, sl, rl, fp, help.New()}
+	return Model{&common, cfg, sl, rl, fp}
 }
