@@ -14,6 +14,7 @@ import (
 type SourcePickerModel struct {
 	common *Common
 	list   list.Model
+	KeyMap sourceKeyMap
 }
 
 func NewSourcePicker(common *Common, items []list.Item) SourcePickerModel {
@@ -72,4 +73,19 @@ func (m SourcePickerModel) View() string {
 	m.list.SetHeight(heightBudget)
 
 	return lipgloss.JoinVertical(lipgloss.Center, m.list.View(), helpText)
+}
+
+func (m SourcePickerModel) ShortHelp() []key.Binding {
+	kb := []key.Binding{m.KeyMap.c.Help, m.KeyMap.c.Quit}
+	kb = append(m.list.ShortHelp(), kb...)
+	return kb
+}
+
+func (m SourcePickerModel) FullHelp() [][]key.Binding {
+	kbs := [][]key.Binding{
+		//{m.KeyMap.toggleExaminer, m.KeyMap.toggleFocus}, // first column TODO: AHHH!!
+		{m.KeyMap.c.Help, m.KeyMap.c.Quit}, // second column
+	}
+	kbs = append(m.list.FullHelp(), kbs...)
+	return kbs
 }
